@@ -38,10 +38,11 @@ public final class WhiteRectangleDetector {
   private final BitMatrix image;
   private final int height;
   private final int width;
-  private final int leftInit;
-  private final int rightInit;
-  private final int downInit;
-  private final int upInit;
+  private final int halfsize;
+  private int leftInit;
+  private int rightInit;
+  private int downInit;
+  private int upInit;
 
   public WhiteRectangleDetector(BitMatrix image) throws NotFoundException {
     this(image, INIT_SIZE, image.getWidth() / 2, image.getHeight() / 2);
@@ -54,7 +55,11 @@ public final class WhiteRectangleDetector {
     this.image = image;
     height = image.getHeight();
     width = image.getWidth();
-    int halfsize = initSize / 2;
+    halfsize = initSize / 2;
+    initDetector(x, y);
+  }
+
+  public void initDetector(int x, int y) throws NotFoundException {
     leftInit = x - halfsize;
     rightInit = x + halfsize;
     upInit = y - halfsize;
@@ -62,6 +67,38 @@ public final class WhiteRectangleDetector {
     if (upInit < 0 || leftInit < 0 || downInit >= height || rightInit >= width) {
       throw NotFoundException.getNotFoundInstance();
     }
+  }
+
+  /**
+   * <p>
+   * Detects a candidate barcode-like rectangular region within the image.
+   * It could start from multiple points given, increases the size of the candidate
+   * region until it finds a white rectangular region.
+   * </p>
+   *
+   * @param {@link ResultPoint}[] describing the positions to start detecting.
+   *
+   * @return {@link ResultPoint}[] describing the corners of the rectangular
+   *         region. The first and last points are opposed on the diagonal, as
+   *         are the second and third. The first point will be the topmost
+   *         point and the last, the bottommost. The second point will be
+   *         leftmost and the third, the rightmost
+   * @throws NotFoundException if no Data Matrix Code can be found
+  */
+  public ResultPoint[] detect(ResultPoint[] startPoint) throws NotFoundException{
+    ResultPoint[] ret = null;
+    for (int i = 0; i < startPoint.length; i++){
+      initDetector((int)(startPoint[i].getX()), (int)(startPoint[i].getY()));
+      try{
+        ret = detect();
+      }
+      catch(NotFoundException nfe)
+      {
+        continue;
+      }
+      return ret;
+    }
+    throw NotFoundException.getNotFoundInstance();
   }
 
   /**
@@ -87,7 +124,7 @@ public final class WhiteRectangleDetector {
     boolean sizeExceeded = false;
     boolean aBlackPointFoundOnBorder = true;
     boolean atLeastOneBlackPointFoundOnBorder = false;
-    
+
     boolean atLeastOneBlackPointFoundOnRight = false;
     boolean atLeastOneBlackPointFoundOnBottom = false;
     boolean atLeastOneBlackPointFoundOnLeft = false;
